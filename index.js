@@ -1,12 +1,12 @@
 require('dotenv').config();
+
 const express = require('express');
 const { Client, middleware } = require('@line/bot-sdk');
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// LINE BOT 設定
 const lineConfig = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET,
@@ -14,12 +14,12 @@ const lineConfig = {
 
 const lineClient = new Client(lineConfig);
 
-// OpenAI 設定
-const openai = new OpenAIApi(new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-}));
+});
 
-// 處理 LINE Webhook
+app.use(express.json());
+
 app.post('/webhook', middleware(lineConfig), async (req, res) => {
   const events = req.body.events;
 
@@ -28,22 +28,22 @@ app.post('/webhook', middleware(lineConfig), async (req, res) => {
       const userMessage = event.message.text;
 
       try {
-        const gptResponse = await openai.createChatCompletion({
+        const gptResponse = await openai.chat.completions.create({
           model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: userMessage }],
         });
 
-        const replyMessage = gptResponse.data.choices[0].message.content;
+        const replyMessage = gptResponse.choices[0].message.content;
 
         await lineClient.replyMessage(event.replyToken, {
           type: 'text',
           text: replyMessage,
         });
       } catch (error) {
-        console.error('GPT Error:', error);
+        console.error('OpenAI API Error:', error);
         await lineClient.replyMessage(event.replyToken, {
           type: 'text',
-          text: '抱歉，我無法處理您的訊息。',
+          text: '抱歉，系統發生錯誤，請稍後再試。',
         });
       }
     }
