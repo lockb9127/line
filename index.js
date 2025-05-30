@@ -34,3 +34,29 @@ app.post('/webhook', middleware(lineConfig), async (req, res) => {
 
       try {
         const gptResponse = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: userMessage }],
+        });
+
+        const replyMessage = gptResponse.choices[0].message.content;
+
+        await lineClient.replyMessage(event.replyToken, {
+          type: 'text',
+          text: replyMessage,
+        });
+      } catch (error) {
+        console.error('OpenAI API Error:', error);
+        await lineClient.replyMessage(event.replyToken, {
+          type: 'text',
+          text: '抱歉，系統發生錯誤，請稍後再試。',
+        });
+      }
+    }
+  }
+
+  res.status(200).send('OK');
+});
+
+app.listen(port, () => {
+  console.log(`伺服器正在 ${port} 埠上執行`);
+});
